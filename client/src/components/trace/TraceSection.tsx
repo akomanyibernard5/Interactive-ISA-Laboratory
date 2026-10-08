@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import Tabs from '@cloudscape-design/components/tabs';
 import Box from '@cloudscape-design/components/box';
 import Badge from '@cloudscape-design/components/badge';
+import Button from '@cloudscape-design/components/button';
 import SpaceBetween from '@cloudscape-design/components/space-between';
 import type { TraceEntry, RunMode } from '../../utils/types';
+import { OPCODE_COLORS } from '../../utils/opcodeColors';
 
 interface TraceSectionProps {
   registerTrace: TraceEntry[];
@@ -22,14 +24,24 @@ function formatInstruction(entry: TraceEntry): string {
   return operands.length > 0 ? `${opcode} ${operands.join(', ')}` : opcode;
 }
 
-const OPCODE_COLORS: Record<string, string> = {
-  LOAD_CONSTANT: '#0972d3', LOAD_VARIABLE: '#0972d3',
-  STORE_VARIABLE: '#7d2105',
-  ADD: '#037f0c', SUB: '#037f0c', MUL: '#037f0c', DIV: '#037f0c',
-  COMPARE: '#8b4513',
-  JUMP: '#6b21a8', JUMP_IF_ZERO: '#6b21a8', LABEL: '#6b21a8',
-  HALT: '#d91515',
-};
+function exportTraceCSV(trace: TraceEntry[], filename: string) {
+  const header = 'Step,PC,Instruction,StateBefore,StateAfter,MemChanges';
+  const rows = trace.map(e =>
+    [
+      e.step,
+      toHex(e.programCounter),
+      `"${formatInstruction(e)}"`,
+      `"${e.stateBefore}"`,
+      `"${e.stateAfter}"`,
+      e.memoryChanges.length,
+    ].join(',')
+  );
+  const blob = new Blob([[header, ...rows].join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 function EmptyState() {
   return (
@@ -175,43 +187,76 @@ export default function TraceSection({
 
   if (runMode === 'both') {
     return (
-      <Tabs
-        activeTabId={activeTabId}
-        onChange={({ detail }) => setActiveTabId(detail.activeTabId)}
-        tabs={[
-          {
-            id: 'register-vm',
-            label: `Register VM (${registerTrace.length})`,
-            content: (
-              <TraceList
-                trace={registerTrace}
-                currentStep={currentStep}
-                onSelectEntry={onSelectEntry}
-              />
-            ),
-          },
-          {
-            id: 'stack-vm',
-            label: `Stack VM (${stackTrace.length})`,
-            content: (
-              <TraceList
-                trace={stackTrace}
-                currentStep={currentStep}
-                onSelectEntry={onSelectEntry}
-              />
-            ),
-          },
-        ]}
-      />
+      <SpaceBetween size="s">
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+          <Button
+            variant="normal"
+            iconName="download"
+            disabled={registerTrace.length === 0}
+            onClick={() => exportTraceCSV(registerTrace, 'trace-register.csv')}
+          >
+            Export Register CSV
+          </Button>
+          <Button
+            variant="normal"
+            iconName="download"
+            disabled={stackTrace.length === 0}
+            onClick={() => exportTraceCSV(stackTrace, 'trace-stack.csv')}
+          >
+            Export Stack CSV
+          </Button>
+        </div>
+        <Tabs
+          activeTabId={activeTabId}
+          onChange={({ detail }) => setActiveTabId(detail.activeTabId)}
+          tabs={[
+            {
+              id: 'register-vm',
+              label: `Register VM (${registerTrace.length})`,
+              content: (
+                <TraceList
+                  trace={registerTrace}
+                  currentStep={currentStep}
+                  onSelectEntry={onSelectEntry}
+                />
+              ),
+            },
+            {
+              id: 'stack-vm',
+              label: `Stack VM (${stackTrace.length})`,
+              content: (
+                <TraceList
+                  trace={stackTrace}
+                  currentStep={currentStep}
+                  onSelectEntry={onSelectEntry}
+                />
+              ),
+            },
+          ]}
+        />
+      </SpaceBetween>
     );
   }
 
   const trace = runMode === 'register' ? registerTrace : stackTrace;
+  const filename = `trace-${runMode}.csv`;
   return (
-    <TraceList
-      trace={trace}
-      currentStep={currentStep}
-      onSelectEntry={onSelectEntry}
-    />
+    <SpaceBetween size="s">
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          variant="normal"
+          iconName="download"
+          disabled={trace.length === 0}
+          onClick={() => exportTraceCSV(trace, filename)}
+        >
+          Export CSV
+        </Button>
+      </div>
+      <TraceList
+        trace={trace}
+        currentStep={currentStep}
+        onSelectEntry={onSelectEntry}
+      />
+    </SpaceBetween>
   );
 }

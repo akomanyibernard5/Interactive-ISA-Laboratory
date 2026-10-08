@@ -41,28 +41,52 @@ export default function MachineStateSection({
 
   if (runMode === 'both') {
     content = (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%)', borderRadius: '8px', padding: '10px', border: '1px solid #0972d333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0972d3' }} />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#0972d3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Register VM</span>
+          </div>
           {regState
             ? <RegisterFileVisual state={regState} />
-            : <EmptyState message="No register state" />}
+            : <EmptyState message="Load and step to see register state" />}
         </div>
-        <div>
+        <div style={{ background: 'linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%)', borderRadius: '8px', padding: '10px', border: '1px solid #037f0c33' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+            <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#037f0c' }} />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: '#037f0c', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stack VM</span>
+          </div>
           {stkState
             ? <StackVisual state={stkState} />
-            : <EmptyState message="No stack state" />}
+            : <EmptyState message="Load and step to see stack state" />}
         </div>
       </div>
     );
   } else if (runMode === 'register') {
-    content = regState
-      ? <RegisterFileVisual state={regState} />
-      : <EmptyState message="Load and step through a program to see register values." />;
+    content = (
+      <div style={{ background: 'linear-gradient(135deg, #f0f7ff 0%, #e6f0ff 100%)', borderRadius: '8px', padding: '10px', border: '1px solid #0972d333' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#0972d3' }} />
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#0972d3', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Register VM Active</span>
+        </div>
+        {regState
+          ? <RegisterFileVisual state={regState} />
+          : <EmptyState message="Load and step through a program to see register values." />}
+      </div>
+    );
   } else {
-    content = stkState
-      ? <StackVisual state={stkState} />
-      : <EmptyState message="Load and step through a program to see the operand stack." />;
+    content = (
+      <div style={{ background: 'linear-gradient(135deg, #f0fff4 0%, #e6ffed 100%)', borderRadius: '8px', padding: '10px', border: '1px solid #037f0c33' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#037f0c' }} />
+          <span style={{ fontSize: '11px', fontWeight: 700, color: '#037f0c', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stack VM Active</span>
+        </div>
+        {stkState
+          ? <StackVisual state={stkState} />
+          : <EmptyState message="Load and step through a program to see the operand stack." />}
+      </div>
+    );
   }
 
-  return <>{content}</>;
+  return <div style={{ minHeight: '340px', height: '100%', boxSizing: 'border-box' }}>{content}</div>;
 }

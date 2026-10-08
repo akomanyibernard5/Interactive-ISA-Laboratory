@@ -44,13 +44,23 @@ export class MockSimulator implements ISimulator {
     if (!this.isLoaded()) throw new Error("No program loaded.");
     // Pin at the last state rather than overflowing the array.
     if (this.stepIndex < this.states.length - 1) this.stepIndex += 1;
+    // In 'both' mode advance the stack cursor in lock-step.
+    if (this.runMode === 'both' && this.stackStepIndex < MOCK_STACK_STATES.length - 1) {
+      this.stackStepIndex += 1;
+    }
     return this.getState();
   }
 
   run(): MachineState {
     if (!this.isLoaded()) throw new Error("No program loaded.");
     this.stepIndex = this.states.length - 1;
+    if (this.runMode === 'both') this.stackStepIndex = MOCK_STACK_STATES.length - 1;
     return this.getState();
+  }
+
+  pause(): void {
+    // The mock simulator runs synchronously so pause is a no-op here.
+    // A real async engine would signal the execution loop to stop.
   }
 
   getState(): MachineState {

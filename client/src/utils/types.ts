@@ -140,6 +140,7 @@ export interface ISimulator {
   reset(): void;
   step(): MachineState;
   run(): MachineState;
+  pause(): void;
   getState(): MachineState;
   getMetrics(): ExecutionMetrics;
   getTrace(): TraceEntry[];

@@ -8,6 +8,7 @@ interface CEditorProps {
   errors?: EditorError[];
   readOnly?: boolean;
   height?: string;
+  programName?: string;
 }
 
 const C_KEYWORDS = new Set([
@@ -117,6 +118,7 @@ export default function CEditor({
   errors = [],
   readOnly = false,
   height = '400px',
+  programName,
 }: CEditorProps) {
   const textareaRef  = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
@@ -308,7 +310,7 @@ export default function CEditor({
               fontFamily: FONT_FAMILY,
             }}
           >
-            main.c
+            {programName ? `${programName}.c` : 'main.c'}
           </span>
           {readOnly && (
             <span

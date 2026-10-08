@@ -12,21 +12,13 @@ import '@xyflow/react/dist/style.css';
 import Badge from '@cloudscape-design/components/badge';
 import Box from '@cloudscape-design/components/box';
 import type { CommonIRInstruction, Instruction, TranslationResult } from '../../utils/types';
+import { OPCODE_COLORS } from '../../utils/opcodeColors';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function toHex(n: number, width = 4): string {
   return '0x' + n.toString(16).toUpperCase().padStart(width, '0');
 }
-
-const OPCODE_COLORS: Record<string, string> = {
-  LOAD_CONSTANT: '#0972d3', LOAD_VARIABLE: '#0972d3',
-  STORE_VARIABLE: '#7d2105',
-  ADD: '#037f0c', SUB: '#037f0c', MUL: '#037f0c', DIV: '#037f0c',
-  COMPARE: '#8b4513',
-  JUMP: '#6b21a8', JUMP_IF_ZERO: '#6b21a8', LABEL: '#6b21a8',
-  HALT: '#d91515',
-};
 
 // ── Instruction lists ─────────────────────────────────────────────────────────
 

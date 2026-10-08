@@ -104,8 +104,8 @@ export default function ProgramSection({
   return (
     <SpaceBetween size="xs" direction="vertical">
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, minWidth: 0 }}>
           <Box variant="h3" padding="n">
             {editorState.programName || 'Program'}
             {editorState.isDirty && (
@@ -133,8 +133,10 @@ export default function ProgramSection({
           </Popover>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <ExampleSelector examples={examples} onSelect={handleExampleSelect} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', minWidth: 0, overflow: 'visible' }}>
+          <div style={{ minWidth: '160px', maxWidth: '220px', flexShrink: 1 }}>
+            <ExampleSelector examples={examples} onSelect={handleExampleSelect} />
+          </div>
           <Button variant="normal" onClick={() => onSourceChange('')} ariaLabel="Clear editor" iconName="remove">
             Clear
           </Button>
@@ -147,7 +149,7 @@ export default function ProgramSection({
         </div>
       </div>
 
-      <CEditor value={editorState.source} onChange={onSourceChange} errors={editorState.errors} height="300px" />
+      <CEditor value={editorState.source} onChange={onSourceChange} errors={editorState.errors} height="300px" programName={editorState.programName} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         <Button variant="normal" onClick={onLoad} iconName="upload" ariaLabel="Load program into VM">

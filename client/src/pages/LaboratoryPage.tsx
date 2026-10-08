@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type React from 'react';
 import {
   GitBranch,
@@ -18,6 +18,7 @@ import ExpandableSection from '@cloudscape-design/components/expandable-section'
 import SpaceBetween from '@cloudscape-design/components/space-between';
 
 import AppShell from '../layouts/AppShell';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { useSimulator } from '../services';
 import { MOCK_EXAMPLES, MOCK_BENCHMARKS, MOCK_RESULTS, DEMO_COST_MODEL } from '../data';
 import type { ExampleProgram, EditorState, RunMode, Benchmark } from '../utils/types';
@@ -165,7 +166,7 @@ export default function LaboratoryPage() {
     errors: [],
   });
 
-  const { labState, load, step, run, runBoth, reset, setRunMode, isLoaded } = useSimulator();
+  const { labState, load, step, run, runBoth, pause, reset, setRunMode, isLoaded } = useSimulator();
 
   const [navOpen,     setNavOpen]     = useState(true);
   const [activePanel, setActivePanel] = useState<PanelId | null>(null);
@@ -188,7 +189,7 @@ export default function LaboratoryPage() {
   }, [load, editorState.programName, labState.runMode]);
 
   const handleRunBoth = useCallback(() => { runBoth(); }, [runBoth]);
-  const handlePause   = useCallback(() => {}, []);
+  const handlePause   = useCallback(() => { pause(); }, [pause]);
 
   const handleExampleSelect = useCallback((example: ExampleProgram) => {
     setEditorState({ source: example.cSource, programName: example.name, isDirty: false, errors: [] });
@@ -207,6 +208,26 @@ export default function LaboratoryPage() {
   function handleNavSelect(id: PanelId) {
     setActivePanel(prev => prev === id ? null : id);
   }
+
+  // Keyboard shortcuts: F5=Run, Shift+F5=RunBoth, F10=Step, Escape=Reset
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      if (e.key === 'F5') {
+        e.preventDefault();
+        if (e.shiftKey) runBoth();
+        else run();
+      } else if (e.key === 'F10') {
+        e.preventDefault();
+        step();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        reset();
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [run, runBoth, step, reset]);
 
   const {
     executionStatus, runMode, currentStep, translation, memoryChanges,
@@ -262,8 +283,9 @@ export default function LaboratoryPage() {
       navigationWidth={200}
       onNavigationChange={setNavOpen}
     >
-      <ContentLayout disableOverlap>
-        <SpaceBetween size="m">
+      <ErrorBoundary fallbackLabel="Laboratory Page">
+        <ContentLayout disableOverlap>
+          <SpaceBetween size="m">
 
           <div style={{
             display: 'flex', alignItems: 'center', gap: '16px',
@@ -318,57 +340,98 @@ export default function LaboratoryPage() {
             display: 'grid',
             gridTemplateColumns: '2fr 1fr 1fr 1fr',
             gap: '12px',
-            alignItems: 'start',
+            alignItems: 'stretch',
           }}>
 
-            <ExpandableSection
-              variant="container"
-              headerText="Program"
-              expanded={programOpen}
-              onChange={({ detail }) => setProgramOpen(detail.expanded)}
+            <Container
+              header={
+                <Header
+                  variant="h3"
+                  actions={
+                    <Button
+                      variant="icon"
+                      iconName={programOpen ? 'chevron-down' : 'chevron-right'}
+                      onClick={() => setProgramOpen(!programOpen)}
+                      ariaLabel="Toggle program section"
+                    />
+                  }
+                >
+                  Program
+                </Header>
+              }
             >
-              <ProgramSection
-                editorState={editorState}
-                onSourceChange={handleSourceChange}
-                runMode={runMode}
-                onRunModeChange={handleRunModeChange}
-                executionStatus={executionStatus}
-                isLoaded={isLoaded}
-                onLoad={handleLoad}
-                onRun={run}
-                onRunBoth={handleRunBoth}
-                onStep={step}
-                onPause={handlePause}
-                onReset={reset}
-                examples={MOCK_EXAMPLES}
-                onExampleSelect={handleExampleSelect}
-              />
-            </ExpandableSection>
+              <div style={{ display: programOpen ? 'block' : 'none' }}>
+                <ProgramSection
+                  editorState={editorState}
+                  onSourceChange={handleSourceChange}
+                  runMode={runMode}
+                  onRunModeChange={handleRunModeChange}
+                  executionStatus={executionStatus}
+                  isLoaded={isLoaded}
+                  onLoad={handleLoad}
+                  onRun={run}
+                  onRunBoth={handleRunBoth}
+                  onStep={step}
+                  onPause={handlePause}
+                  onReset={reset}
+                  examples={MOCK_EXAMPLES}
+                  onExampleSelect={handleExampleSelect}
+                />
+              </div>
+            </Container>
 
-            <ExpandableSection
-              variant="container"
-              headerText="Machine State"
-              expanded={machineOpen}
-              onChange={({ detail }) => setMachineOpen(detail.expanded)}
+            <Container
+              header={
+                <Header
+                  variant="h3"
+                  actions={
+                    <Button
+                      variant="icon"
+                      iconName={machineOpen ? 'chevron-down' : 'chevron-right'}
+                      onClick={() => setMachineOpen(!machineOpen)}
+                      ariaLabel="Toggle machine state section"
+                    />
+                  }
+                >
+                  Machine State
+                </Header>
+              }
             >
-              <MachineStateSection
-                registerState={registerState}
-                stackState={stackState}
-                runMode={runMode}
-              />
-            </ExpandableSection>
+              <div style={{ display: machineOpen ? 'block' : 'none', minHeight: '320px' }}>
+                <MachineStateSection
+                  registerState={registerState}
+                  stackState={stackState}
+                  runMode={runMode}
+                />
+              </div>
+            </Container>
 
-            <ExpandableSection
-              variant="container"
-              headerText="Current Instruction"
-              expanded={liveOpen}
-              onChange={({ detail }) => setLiveOpen(detail.expanded)}
+            <Container
+              header={
+                <Header
+                  variant="h3"
+                  actions={
+                    <Button
+                      variant="icon"
+                      iconName={liveOpen ? 'chevron-down' : 'chevron-right'}
+                      onClick={() => setLiveOpen(!liveOpen)}
+                      ariaLabel="Toggle current instruction section"
+                    />
+                  }
+                >
+                  Current Instruction
+                </Header>
+              }
             >
-              <CurrentInstructionPanel machineState={activeMachineState} runMode={runMode} />
-            </ExpandableSection>
+              <div style={{ display: liveOpen ? 'block' : 'none', minHeight: '320px' }}>
+                <CurrentInstructionPanel machineState={activeMachineState} runMode={runMode} />
+              </div>
+            </Container>
 
             <Container header={<Header variant="h3">Quick Metrics</Header>}>
-              <MetricsBarChart registerMetrics={registerMetrics} stackMetrics={stackMetrics} />
+              <div style={{ minHeight: '320px' }}>
+                <MetricsBarChart registerMetrics={registerMetrics} stackMetrics={stackMetrics} />
+              </div>
             </Container>
 
           </div>
@@ -395,8 +458,9 @@ export default function LaboratoryPage() {
             </Container>
           )}
 
-        </SpaceBetween>
-      </ContentLayout>
+          </SpaceBetween>
+        </ContentLayout>
+      </ErrorBoundary>
     </AppShell>
   );
 }

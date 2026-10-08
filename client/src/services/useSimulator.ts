@@ -12,6 +12,7 @@ export interface UseSimulatorReturn {
   step: () => void;
   run: () => void;
   runBoth: () => void;
+  pause: () => void;
   reset: () => void;
   setRunMode: (mode: RunMode) => void;
   isLoaded: boolean;
@@ -67,8 +68,22 @@ export function useSimulator(): UseSimulatorReturn {
     const metrics     = sim.getMetrics();
     const currentStep = newState.step;
     setLabState(prev => {
+      const isBothMode     = prev.runMode === 'both';
       const isRegisterMode = prev.runMode !== 'stack';
       const memoryChanges  = trace.flatMap(e => e.memoryChanges);
+      // In 'both' mode update both register and stack state simultaneously.
+      if (isBothMode) {
+        const stackState      = sim.getStackState();
+        const stackTrace      = sim.getStackTrace();
+        const stackMetrics    = sim.getStackMetrics();
+        return {
+          ...prev,
+          registerState: newState, stackState,
+          registerMetrics: metrics, stackMetrics,
+          registerTrace: trace, stackTrace,
+          memoryChanges, executionStatus: newState.status, currentStep,
+        };
+      }
       return {
         ...prev,
         registerState:   isRegisterMode ? newState : prev.registerState,
@@ -144,6 +159,13 @@ export function useSimulator(): UseSimulatorReturn {
     });
   }, []);
 
+  const pause = useCallback(() => {
+    const sim = simRef.current;
+    if (!sim.isLoaded()) return;
+    sim.pause();
+    setLabState(prev => ({ ...prev, executionStatus: 'paused' }));
+  }, []);
+
   const setRunMode = useCallback((mode: RunMode) => {
     simRef.current.setRunMode(mode);
     setLabState(prev => ({ ...prev, runMode: mode }));
@@ -151,5 +173,5 @@ export function useSimulator(): UseSimulatorReturn {
 
   const isLoaded = labState.executionStatus !== 'idle';
 
-  return { labState, load, step, run, runBoth, reset, setRunMode, isLoaded };
+  return { labState, load, step, run, runBoth, pause, reset, setRunMode, isLoaded };
 }
