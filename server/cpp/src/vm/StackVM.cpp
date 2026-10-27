@@ -94,6 +94,9 @@ bool StackVM::step() {
         case OpCode::JUMP:           execJump(*instr); break;
         case OpCode::JUMP_IF_ZERO:   execJumpIfZero(*instr); break;
         case OpCode::HALT:           execHalt(); break;
+        default:
+            status_ = ExecutionStatus::Error;
+            return false;
     }
     
     traceEntry.stateAfter = state_.toString();

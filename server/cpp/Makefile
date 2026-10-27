@@ -16,6 +16,10 @@ BUILDDIR = build
 SOURCES = $(SRCDIR)/Types.cpp \
           $(SRCDIR)/Instruction.cpp \
           $(SRCDIR)/Trace.cpp \
+          $(SRCDIR)/IR.cpp \
+          $(SRCDIR)/Parser.cpp \
+          $(SRCDIR)/CodeGen.cpp \
+          $(SRCDIR)/Pipeline.cpp \
           $(SRCDIR)/vm/RegisterVM.cpp \
           $(SRCDIR)/vm/StackVM.cpp
 

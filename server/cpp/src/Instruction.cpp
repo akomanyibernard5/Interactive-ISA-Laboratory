@@ -19,8 +19,8 @@ std::string opCodeToString(OpCode op) {
         case OpCode::JUMP:           return "JUMP";
         case OpCode::JUMP_IF_ZERO:   return "JUMP_IF_ZERO";
         case OpCode::HALT:           return "HALT";
+        default:                     return "UNKNOWN";
     }
-    return "UNKNOWN";
 }
 
 OpCode stringToOpCode(const std::string& str) {

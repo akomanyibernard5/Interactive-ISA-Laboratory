@@ -84,6 +84,9 @@ bool RegisterVM::step() {
         case OpCode::JUMP:           execJump(*instr); break;
         case OpCode::JUMP_IF_ZERO:   execJumpIfZero(*instr); break;
         case OpCode::HALT:           execHalt(); break;
+        default:
+            status_ = ExecutionStatus::Error;
+            return false;
     }
     
     // Capture state after execution
@@ -96,6 +99,7 @@ bool RegisterVM::step() {
         .memoryReads = metrics_.memoryReads,
         .memoryWrites = metrics_.memoryWrites,
         .branchCount = metrics_.branchCount,
+        // It is a register-based VM, so stack operations are always zero
         .stackPushCount = 0,
         .stackPopCount = 0
     };

@@ -11,8 +11,8 @@ std::string executionStatusToString(ExecutionStatus status) {
         case ExecutionStatus::Paused:  return "paused";
         case ExecutionStatus::Halted:  return "halted";
         case ExecutionStatus::Error:   return "error";
+        default:                       return "unknown";
     }
-    return "unknown";
 }
 
 std::string memoryAccessTypeToString(MemoryAccessType type) {

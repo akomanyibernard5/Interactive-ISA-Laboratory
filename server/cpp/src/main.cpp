@@ -4,6 +4,7 @@
 #include "../include/Instruction.hpp"
 #include "../include/vm/RegisterVM.hpp"
 #include "../include/vm/StackVM.hpp"
+#include "../include/Pipeline.hpp"
 
 using namespace iil;
 
@@ -24,8 +25,72 @@ std::string formatInstruction(const Instruction& instr) {
     return oss.str();
 }
 
-// Create the demo program: x = (a + b) * c where a=3, b=5, c=2 => x=16
-Program createDemoProgram() {
+void runPipelineDemo(const std::string& name, const std::string& source) {
+    std::cout << "\n";
+    std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
+    std::cout << "║  " << std::left << std::setw(58) << name << " ║\n";
+    std::cout << "╚══════════════════════════════════════════════════════════════╝\n\n";
+    
+    std::cout << "Source:\n";
+    std::cout << "  " << source << "\n\n";
+    
+    Pipeline pipeline;
+    auto result = pipeline.run(source);
+    
+    if (!result.compilationSuccess) {
+        std::cout << "COMPILATION ERROR: " << result.compilationError << "\n";
+        return;
+    }
+    
+    // Display IR
+    std::cout << "--- Intermediate Representation ---\n";
+    std::cout << result.irString << "\n";
+    
+    // Display generated code
+    std::cout << "--- Register VM Code ---\n";
+    std::cout << result.registerCodeString << "\n";
+    
+    std::cout << "--- Stack VM Code ---\n";
+    std::cout << result.stackCodeString << "\n";
+    
+    // Results
+    std::cout << "--- Execution Results ---\n";
+    
+    if (result.registerResult.success) {
+        std::cout << "Register VM: ";
+        for (const auto& [name, val] : result.registerResult.finalVariables) {
+            std::cout << name << " = " << val << "  ";
+        }
+        std::cout << "\n";
+    } else {
+        std::cout << "Register VM: " << result.registerResult.status << "\n";
+    }
+    
+    if (result.stackResult.success) {
+        std::cout << "Stack VM:    ";
+        for (const auto& [name, val] : result.stackResult.finalVariables) {
+            std::cout << name << " = " << val << "  ";
+        }
+        std::cout << "\n";
+    } else {
+        std::cout << "Stack VM: " << result.stackResult.status << "\n";
+    }
+    
+    std::cout << "\n--- Comparison ---\n";
+    std::cout << formatComparison(result.registerResult.metrics, result.stackResult.metrics);
+    
+    if (result.resultsMatch) {
+        std::cout << "\n✓ Both VMs produced matching results\n";
+    } else {
+        std::cout << "\n✗ Results differ between VMs\n";
+    }
+}
+
+// Original hardcoded demo (kept for reference)
+void runOriginalDemo() {
+    std::cout << "\n--- Original Hardcoded Demo ---\n";
+    
+    // Register VM program
     Program prog;
     prog.id = "demo";
     prog.name = "x = (a + b) * c";
@@ -40,15 +105,21 @@ Program createDemoProgram() {
         {0x0018, OpCode::HALT,           {}, "", 2}
     };
     prog.calculateTotalSize();
-    return prog;
-}
-
-Program createStackProgram() {
-    Program prog;
-    prog.id = "demo-stack";
-    prog.name = "x = (a + b) * c";
-    prog.architecture = Program::Architecture::Stack;
-    prog.instructions = {
+    
+    RegisterVM vm;
+    CostModel costModel{"Demo Cost Model", 1, 2, 3};
+    vm.setCostModel(costModel);
+    vm.load(prog);
+    vm.run();
+    
+    std::cout << "Register VM result: x = " << vm.getVariable("x") << "\n";
+    
+    // Stack VM program
+    Program stkProg;
+    stkProg.id = "demo-stack";
+    stkProg.name = "x = (a + b) * c";
+    stkProg.architecture = Program::Architecture::Stack;
+    stkProg.instructions = {
         {0x0000, OpCode::LOAD_CONSTANT,  {"#3"}, "", 3},
         {0x0003, OpCode::LOAD_CONSTANT,  {"#5"}, "", 3},
         {0x0006, OpCode::ADD,            {}, "", 1},
@@ -57,163 +128,44 @@ Program createStackProgram() {
         {0x000B, OpCode::STORE_VARIABLE, {"x"}, "", 3},
         {0x000E, OpCode::HALT,           {}, "", 1}
     };
-    prog.calculateTotalSize();
-    return prog;
-}
-
-void runRegisterVM(const Program& prog) {
-    std::cout << "\n";
-    std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║                    REGISTER VM EXECUTION                      ║\n";
-    std::cout << "╚══════════════════════════════════════════════════════════════╝\n\n";
-
-    RegisterVM vm;
-    CostModel costModel{"Demo Cost Model", 1, 2, 3};
-    vm.setCostModel(costModel);
-    vm.load(prog);
-
-    std::cout << "Program: " << prog.name << "\n";
-    std::cout << "Size: " << prog.totalSizeBytes << " bytes\n\n";
-
-    std::cout << "--- Instructions ---\n";
-    for (const auto& instr : prog.instructions) {
-        std::cout << "  " << formatInstruction(instr) << "\n";
-    }
-    std::cout << "\n--- Execution Trace ---\n\n";
-
-    int stepNum = 0;
-    while (vm.step()) {
-        stepNum++;
-        auto trace = vm.trace();
-        if (!trace.entries().empty()) {
-            const auto& entry = trace.entries().back();
-            std::cout << "Step " << std::setw(2) << entry.step << " | "
-                      << formatInstruction(entry.instruction) << "\n";
-            std::cout << "         Before: " << entry.stateBefore << "\n";
-            std::cout << "         After:  " << entry.stateAfter << "\n";
-            if (!entry.memoryChanges.empty()) {
-                for (const auto& mc : entry.memoryChanges) {
-                    std::cout << "         Memory: [" << mc.addressHex() << "] "
-                              << (mc.previousValue.has_value() ? std::to_string(*mc.previousValue) : "?")
-                              << " -> " << mc.newValue << " (" 
-                              << memoryAccessTypeToString(mc.accessType) << ")\n";
-                }
-            }
-            std::cout << "\n";
-        }
-    }
-
-    auto metrics = vm.metrics();
-    std::cout << "--- Final State ---\n";
-    std::cout << "  Result: x = " << vm.getVariable("x") << "\n";
-    std::cout << "  Status: " << executionStatusToString(vm.status()) << "\n\n";
-
-    std::cout << "--- Metrics ---\n";
-    std::cout << "  Instructions executed: " << metrics.dynamicInstructionCount << "\n";
-    std::cout << "  Memory reads:  " << metrics.memoryReads << "\n";
-    std::cout << "  Memory writes: " << metrics.memoryWrites << "\n";
-    std::cout << "  Branches:      " << metrics.branchCount << "\n";
-    std::cout << "  Stack pushes:  " << metrics.stackPushCount << "\n";
-    std::cout << "  Stack pops:    " << metrics.stackPopCount << "\n";
-    std::cout << "  Estimated cost: " << metrics.estimatedCost << "\n";
-}
-
-void runStackVM(const Program& prog) {
-    std::cout << "\n";
-    std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║                      STACK VM EXECUTION                       ║\n";
-    std::cout << "╚══════════════════════════════════════════════════════════════╝\n\n";
-
-    StackVM vm;
-    CostModel costModel{"Demo Cost Model", 1, 2, 3};
-    vm.setCostModel(costModel);
-    vm.load(prog);
-
-    std::cout << "Program: " << prog.name << "\n";
-    std::cout << "Size: " << prog.totalSizeBytes << " bytes\n\n";
-
-    std::cout << "--- Instructions ---\n";
-    for (const auto& instr : prog.instructions) {
-        std::cout << "  " << formatInstruction(instr) << "\n";
-    }
-    std::cout << "\n--- Execution Trace ---\n\n";
-
-    int stepNum = 0;
-    while (vm.step()) {
-        stepNum++;
-        auto trace = vm.trace();
-        if (!trace.entries().empty()) {
-            const auto& entry = trace.entries().back();
-            std::cout << "Step " << std::setw(2) << entry.step << " | "
-                      << formatInstruction(entry.instruction) << "\n";
-            std::cout << "         Before: " << entry.stateBefore << "\n";
-            std::cout << "         After:  " << entry.stateAfter << "\n";
-            if (!entry.memoryChanges.empty()) {
-                for (const auto& mc : entry.memoryChanges) {
-                    std::cout << "         Memory: [" << mc.addressHex() << "] "
-                              << (mc.previousValue.has_value() ? std::to_string(*mc.previousValue) : "?")
-                              << " -> " << mc.newValue << " (" 
-                              << memoryAccessTypeToString(mc.accessType) << ")\n";
-                }
-            }
-            std::cout << "\n";
-        }
-    }
-
-    auto metrics = vm.metrics();
-    std::cout << "--- Final State ---\n";
-    std::cout << "  Result: x = " << vm.getVariable("x") << "\n";
-    std::cout << "  Status: " << executionStatusToString(vm.status()) << "\n\n";
-
-    std::cout << "--- Metrics ---\n";
-    std::cout << "  Instructions executed: " << metrics.dynamicInstructionCount << "\n";
-    std::cout << "  Memory reads:  " << metrics.memoryReads << "\n";
-    std::cout << "  Memory writes: " << metrics.memoryWrites << "\n";
-    std::cout << "  Branches:      " << metrics.branchCount << "\n";
-    std::cout << "  Stack pushes:  " << metrics.stackPushCount << "\n";
-    std::cout << "  Stack pops:    " << metrics.stackPopCount << "\n";
-    std::cout << "  Estimated cost: " << metrics.estimatedCost << "\n";
+    stkProg.calculateTotalSize();
+    
+    StackVM stkVm;
+    stkVm.setCostModel(costModel);
+    stkVm.load(stkProg);
+    stkVm.run();
+    
+    std::cout << "Stack VM result: x = " << stkVm.getVariable("x") << "\n";
 }
 
 int main() {
     std::cout << "\n";
     std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
     std::cout << "║          INTERACTIVE ISA LABORATORY - BACKEND                ║\n";
-    std::cout << "║          Register VM vs Stack VM Comparison                   ║\n";
+    std::cout << "║          C Subset → IR → Register/Stack VM Pipeline           ║\n";
     std::cout << "╚══════════════════════════════════════════════════════════════╝\n";
-
-    std::cout << "\nComputing: x = (a + b) * c where a=3, b=5, c=2\n";
-    std::cout << "Expected: x = (3 + 5) * 2 = 16\n";
-
-    // Run Register VM
-    auto regProg = createDemoProgram();
-    runRegisterVM(regProg);
-
-    // Run Stack VM
-    auto stkProg = createStackProgram();
-    runStackVM(stkProg);
-
-    // Comparison summary
-    std::cout << "\n";
-    std::cout << "╔══════════════════════════════════════════════════════════════╗\n";
-    std::cout << "║                    COMPARISON SUMMARY                         ║\n";
-    std::cout << "╚══════════════════════════════════════════════════════════════╝\n\n";
-
-    std::cout << "Both VMs computed: x = 16 ✓\n\n";
-
-    std::cout << "  Metric              Register VM    Stack VM\n";
-    std::cout << "  ─────────────────────────────────────────────\n";
-    std::cout << "  Program size        26 bytes       15 bytes\n";
-    std::cout << "  Instructions        7              7\n";
-    std::cout << "  Memory writes       1              1\n";
-    std::cout << "  Stack pushes        0              5\n";
-    std::cout << "  Stack pops          0              5\n";
-    std::cout << "  Estimated cost      10             10\n";
-    std::cout << "\n";
-
-    std::cout << "Key insight: Stack VM has smaller code but more stack operations.\n";
-    std::cout << "Register VM has larger instructions but no operand stack traffic.\n";
-    std::cout << "\n";
-
+    
+    // Test suite from task specification
+    runPipelineDemo("Test A: Arithmetic and precedence",
+        "int main() { int x = (3 + 5) * 2; return x; }");
+    
+    runPipelineDemo("Test B: Operator precedence",
+        "int main() { int x = 3 + 5 * 2; return x; }");
+    
+    runPipelineDemo("Test C: Subtraction",
+        "int main() { int x = 10 - 3; return x; }");
+    
+    runPipelineDemo("Test D: Multiple assignments",
+        "int main() { int a = 4; int b = 6; int x = a + b; return x; }");
+    
+    runPipelineDemo("Test E: Parentheses",
+        "int main() { int x = (10 - 3) * 2; return x; }");
+    
+    runPipelineDemo("Test F: Division",
+        "int main() { int x = 20 / 4; return x; }");
+    
+    // Original demo for comparison
+    runOriginalDemo();
+    
     return 0;
 }
